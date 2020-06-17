@@ -7,12 +7,6 @@ import java.util.Map;
 
 public enum Banknote {
 
-    EU_5(5, "EUR"),
-    EU_10(10, "EUR"),
-    EU_20(20, "EUR"),
-    EU_50(50, "EUR"),
-    EU_100(100, "EUR"),
-    EU_200(200, "EUR"),
     PL_10(10, "PLN"),
     PL_20(20, "PLN"),
     PL_50(50, "PLN"),
@@ -23,7 +17,6 @@ public enum Banknote {
     private static final Map<String, List<Banknote>> banknotesForCurrency;
     static {
         banknotesForCurrency = new HashMap<>();
-        banknotesForCurrency.put("EUR", List.of(EU_200, EU_100, EU_50, EU_20, EU_10, EU_5));
         banknotesForCurrency.put("PLN", List.of(PL_500, PL_200, PL_100, PL_50, PL_20, PL_10));
     }
     private final int denomination;
