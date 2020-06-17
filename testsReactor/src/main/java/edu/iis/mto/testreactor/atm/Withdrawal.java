@@ -9,7 +9,6 @@ import java.util.stream.IntStream;
 
 public class Withdrawal {
 
-    public static Withdrawal ZERO = new Withdrawal(List.of());
     private final List<Banknote> banknotes;
 
     public static Withdrawal create(List<BanknotesPack> banknotes) {

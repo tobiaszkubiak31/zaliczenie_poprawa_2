@@ -95,18 +95,6 @@ public class Money {
         return Currency.getInstance(currencyCode);
     }
 
-    public boolean greaterThan(Money other) {
-        return denomination.compareTo(other.denomination) > 0;
-    }
-
-    public boolean lessThan(Money other) {
-        return denomination.compareTo(other.denomination) < 0;
-    }
-
-    public boolean lessOrEquals(Money other) {
-        return denomination.compareTo(other.denomination) <= 0;
-    }
-
     @Override
     public String toString() {
         return String.format("%0$.2f %s", denomination, getCurrency().getSymbol());
