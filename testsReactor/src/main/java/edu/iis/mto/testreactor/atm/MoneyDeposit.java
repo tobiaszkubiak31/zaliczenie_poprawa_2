@@ -1,6 +1,7 @@
 package edu.iis.mto.testreactor.atm;
 
-import java.util.Collections;
+import static java.util.Objects.requireNonNull;
+
 import java.util.Currency;
 import java.util.List;
 import java.util.Map;
@@ -12,10 +13,15 @@ public class MoneyDeposit {
     private final Currency currency;
     private final Map<Banknote, BanknotesPack> deposit;
 
-    private MoneyDeposit(Builder builder) {
-        this.currency = builder.currency;
-        this.deposit = builder.deposit.stream()
-                                      .collect(Collectors.toMap(BanknotesPack::getDenomination, Function.identity()));
+    public static MoneyDeposit create(Currency currency, List<BanknotesPack> deposit) {
+        return new MoneyDeposit(requireNonNull(currency), requireNonNull(deposit));
+    }
+
+    private MoneyDeposit(Currency currency, List<BanknotesPack> deposit) {
+        this.currency = currency;
+        this.deposit = deposit.stream()
+                              .collect(Collectors.toMap(BanknotesPack::getDenomination, Function.identity(), (pack1,
+                                      pack2) -> BanknotesPack.create(pack1.getCount() + pack2.getCount(), pack1.getDenomination())));
     }
 
     public Currency getCurrency() {
@@ -35,36 +41,23 @@ public class MoneyDeposit {
     }
 
     private BanknotesPack getFor(Banknote note) {
-        return deposit.getOrDefault(note, BanknotesPack.builder()
-                                                       .withCount(0)
-                                                       .withDenomination(note)
-                                                       .build());
+        return deposit.getOrDefault(note, BanknotesPack.create(0, note));
     }
 
-    public static Builder builder() {
-        return new Builder();
+    public void release(BanknotesPack banknotesPack) {
+        Banknote denomination = banknotesPack.getDenomination();
+        BanknotesPack existing = getFor(denomination);
+        int newCount = existing.getCount() - banknotesPack.getCount();
+        if (newCount < 0) {
+            throw new IllegalArgumentException("unavailable banknotes count " + banknotesPack.getCount());
+        }
+        this.deposit.put(denomination, BanknotesPack.create(newCount, existing.getDenomination()));
     }
 
-    public static final class Builder {
-
-        private Currency currency;
-        private List<BanknotesPack> deposit = Collections.emptyList();
-
-        private Builder() {}
-
-        public Builder withCurrency(Currency currency) {
-            this.currency = currency;
-            return this;
-        }
-
-        public Builder withDeposit(List<BanknotesPack> deposit) {
-            this.deposit = deposit;
-            return this;
-        }
-
-        public MoneyDeposit build() {
-            return new MoneyDeposit(this);
-        }
+    public List<BanknotesPack> getBanknotes() {
+        return deposit.values()
+                      .stream()
+                      .collect(Collectors.toList());
     }
 
 }

@@ -1,9 +1,8 @@
 package edu.iis.mto.testreactor.atm;
 
-public enum ErrorType {
+public enum ErrorCode {
     AHTHORIZATION,
     NO_FUNDS_ON_ACCOUNT,
-    NOT_ENOUGH_BANKNOTES,
     WRONG_AMOUNT,
     WRONG_CURRENCY
 }

@@ -1,7 +1,10 @@
 package edu.iis.mto.testreactor.atm;
 
+import static java.util.Objects.requireNonNull;
+
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Currency;
 import java.util.List;
 
 import edu.iis.mto.testreactor.atm.bank.AccountException;
@@ -13,82 +16,96 @@ public class ATMachine {
 
     private final Bank bank;
 
-    private final MoneyDeposit deposit;
+    private MoneyDeposit deposit;
 
-    public ATMachine(Bank bank, MoneyDeposit deposit) {
-        this.bank = bank;
-        this.deposit = deposit;
+    public ATMachine(Bank bank, Currency currency) {
+        this.bank = requireNonNull(bank);
+        this.deposit = MoneyDeposit.create(requireNonNull(currency), List.of());
     }
 
-    Withdrawal withdraw(PinCode pin, Card card, Money amount) throws ATMOperationException {
+    public void setDeposit(MoneyDeposit deposit) {
+        this.deposit = requireNonNull(deposit);
+    }
+
+    public MoneyDeposit getCurrentDeposit() {
+        return MoneyDeposit.create(deposit.getCurrency(), deposit.getBanknotes());
+    }
+
+    public Withdrawal withdraw(PinCode pin, Card card, Money amount) throws ATMOperationException {
+        validateAmount(amount);
         AuthorizationToken token = authorize(pin, card);
-        List<BanknotesPack> withdrawal = performTransaction(token, amount);
-        return Withdrawal.create(withdrawal);
+        List<BanknotesPack> banknotes = calculateWithdrawal(amount);
+        performBankTransaction(token, amount);
+
+        return Withdrawal.create(release(banknotes));
+    }
+
+    private List<BanknotesPack> release(List<BanknotesPack> banknotes) {
+        for (BanknotesPack banknotesPack : banknotes) {
+            deposit.release(banknotesPack);
+        }
+        return banknotes;
+    }
+
+    private void validateAmount(Money amount) throws ATMOperationException {
+        if (unavailableCurrency(amount)) {
+            throw new ATMOperationException(ErrorCode.WRONG_CURRENCY);
+        }
     }
 
     private AuthorizationToken authorize(PinCode pin, Card card) throws ATMOperationException {
         try {
-            return bank.autorize(pin, card);
+            return bank.autorize(pin.getPIN(), card.getNumber());
         } catch (AuthorizationException e) {
-            throw new ATMOperationException(ErrorType.AHTHORIZATION);
+            throw new ATMOperationException(ErrorCode.AHTHORIZATION);
         }
-    }
-
-    private List<BanknotesPack> performTransaction(AuthorizationToken token, Money amount) throws ATMOperationException {
-        List<BanknotesPack> withdrawal = calculateWithdrawal(amount);
-        if (availableInDeposit(withdrawal)) {
-            performBankTransaction(token, amount);
-            return withdrawal;
-        }
-        throw new ATMOperationException(ErrorType.NOT_ENOUGH_BANKNOTES);
-    }
-
-    private boolean availableInDeposit(List<BanknotesPack> withdrawal) {
-        return withdrawal.stream()
-                         .allMatch(banknotes -> deposit.isAvailable(banknotes));
     }
 
     private void performBankTransaction(AuthorizationToken token, Money amount) throws ATMOperationException {
         try {
             bank.charge(token, amount);
         } catch (AccountException e) {
-            throw new ATMOperationException(ErrorType.NO_FUNDS_ON_ACCOUNT);
+            throw new ATMOperationException(ErrorCode.NO_FUNDS_ON_ACCOUNT);
         }
 
     }
 
     private List<BanknotesPack> calculateWithdrawal(Money amount) throws ATMOperationException {
-        if (unavailableCurrency(amount)) {
-            throw new ATMOperationException(ErrorType.WRONG_CURRENCY);
-        }
-        int value = getValueToWithdraw(amount.getDenomination());
-        List<Banknote> allBanknotesForCurrency = Banknote.getDescFor(amount.getCurrency());
+
+        int valueToWithdraw = getValueToWithdraw(amount.getDenomination());
         List<BanknotesPack> result = new ArrayList<>();
+        List<Banknote> allBanknotesForCurrency = Banknote.getDescFor(amount.getCurrency());
 
         for (Banknote banknote : allBanknotesForCurrency) {
             int denomination = banknote.getDenomination();
-            int requiredCount = value / denomination;
-            int availableCount = deposit.getAvailableCountOf(banknote);
-            value = value % banknote.getDenomination();
-            if (availableCount < requiredCount) {
-                value += (requiredCount - availableCount) * denomination;
+            int requiredBanknotesCount = valueToWithdraw / denomination;
+            valueToWithdraw = valueToWithdraw % banknote.getDenomination();
+
+            if (requiredBanknotesCount > 0) {
+                int availableCount = deposit.getAvailableCountOf(banknote);
+                if (notEnoughBanknotes(requiredBanknotesCount, availableCount)) {
+                    valueToWithdraw += (requiredBanknotesCount - availableCount) * denomination;
+                    requiredBanknotesCount = availableCount;
+                }
+                result.add(BanknotesPack.create(requiredBanknotesCount, banknote));
             }
-            result.add(BanknotesPack.builder()
-                                    .withCount((requiredCount - availableCount))
-                                    .withDenomination(banknote)
-                                    .build());
         }
-        if (value > 0) {
-            throw new ATMOperationException(ErrorType.WRONG_AMOUNT);
+
+        if (valueToWithdraw > 0) {
+            throw new ATMOperationException(ErrorCode.WRONG_AMOUNT);
         }
         return result;
+    }
+
+    private boolean notEnoughBanknotes(int requiredBanknotesCount, int availableCount) {
+        return requiredBanknotesCount > availableCount;
     }
 
     private int getValueToWithdraw(BigDecimal denomination) throws ATMOperationException {
         try {
             return denomination.intValueExact();
         } catch (ArithmeticException e) {
-            throw new ATMOperationException(ErrorType.WRONG_AMOUNT);
+            throw new ATMOperationException(ErrorCode.WRONG_AMOUNT);
         }
     }
 
@@ -96,4 +113,5 @@ public class ATMachine {
         return !deposit.getCurrency()
                        .equals(amount.getCurrency());
     }
+
 }

@@ -2,14 +2,16 @@ package edu.iis.mto.testreactor.atm;
 
 public class ATMOperationException extends Exception {
 
-    private final ErrorType errorType;
+    private static final long serialVersionUID = 1L;
 
-    public ATMOperationException(ErrorType errorType) {
-        this.errorType = errorType;
+    private final ErrorCode errorCode;
+
+    public ATMOperationException(ErrorCode errorCode) {
+        this.errorCode = errorCode;
     }
 
-    public ErrorType getErrorType() {
-        return errorType;
+    public ErrorCode getErrorCode() {
+        return errorCode;
     }
 
 }
