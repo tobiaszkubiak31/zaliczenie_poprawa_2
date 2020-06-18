@@ -1,14 +1,14 @@
 package edu.iis.mto.testreactor.atm;
 
-import static org.junit.Assert.assertThat;
+import static org.hamcrest.MatcherAssert.assertThat;
 
 import org.hamcrest.Matchers;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 public class ATMachineTest {
 
-    @Before
+    @BeforeEach
     public void setUp() throws Exception {}
 
     @Test
