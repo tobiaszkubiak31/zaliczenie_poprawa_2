@@ -33,6 +33,7 @@ public class MedicineDoser {
             dosageLog.logStart();
             for (int i = 0; i < receipe.getNumber(); i++) {
                 dispenseSingleDose(receipe, medicinePackage);
+                wait(receipe);
             }
         } catch (Exception e) {
             dosageLog.logError(receipe, e.getMessage());
@@ -67,6 +68,10 @@ public class MedicineDoser {
         } catch (InfuserException e) {
             dosageLog.logDifuserError(receipe.getDose(), e.getMessage());
         }
+
+    }
+
+    private void wait(Receipe receipe) {
         clock.wait(receipe.getDose()
                           .getPeriod());
     }
